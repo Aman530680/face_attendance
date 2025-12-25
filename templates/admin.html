@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Face Recognition Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Admin Panel</h1>
+            <div class="nav">
+                <a href="/">Student View</a>
+                <a href="/admin" class="active">Admin Panel</a>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <div class="admin-section">
+                <h2>Registration Management</h2>
+                <div class="registration-panel" id="registration-panel" style="display: none;">
+                    <div class="alert alert-warning">
+                        <strong>New User Detected!</strong> A new face has been detected. Please review and approve or reject the registration.
+                    </div>
+                    
+                    <div class="registration-form">
+                        <h3>Student Registration Form</h3>
+                        <form id="registration-form">
+                            <div class="form-group">
+                                <label for="student-name">Full Name:</label>
+                                <input type="text" id="student-name" name="name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-id">Student ID:</label>
+                                <input type="text" id="student-id" name="student_id" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-class">Class:</label>
+                                <input type="text" id="student-class" name="class" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-department">Department:</label>
+                                <input type="text" id="student-department" name="department" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-roll">Roll Number:</label>
+                                <input type="text" id="student-roll" name="roll_no" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-success">Accept Registration</button>
+                                <button type="button" id="reject-btn" class="btn btn-danger">Reject Registration</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="no-registration" id="no-registration">
+                    <p>No pending registrations. New users will appear here when detected.</p>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h2>Attendance Settings</h2>
+                <div class="settings-panel">
+                    <form id="attendance-settings-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="start-time">Start Time:</label>
+                                <input type="time" id="start-time" name="start_time" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="end-time">End Time:</label>
+                                <input type="time" id="end-time" name="end_time" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Settings</button>
+                    </form>
+                    
+                    <div class="current-settings">
+                        <h4>Current Settings</h4>
+                        <p>Status: <span id="current-status" class="status-badge">--</span></p>
+                        <p>Window: <span id="current-window">--:-- to --:--</span></p>
+                        <p>Current Time: <span id="current-time">--:--:--</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-section">
+                <h2>Attendance Records</h2>
+                <div class="records-panel">
+                    <div class="records-filter">
+                        <label for="date-filter">Filter by Date:</label>
+                        <input type="date" id="date-filter">
+                        <button id="load-records" class="btn btn-secondary">Load Records</button>
+                        <button id="clear-filter" class="btn btn-secondary">Show All</button>
+                    </div>
+                    
+                    <div class="records-table">
+                        <table id="attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Class</th>
+                                    <th>Department</th>
+                                    <th>Roll No</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-tbody">
+                                <tr>
+                                    <td colspan="7" class="no-data">Loading records...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Admin panel JavaScript
+        let statusCheckInterval;
+
+        // Check system status
+        function checkStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    updateRegistrationPanel(data.new_user_detected);
+                    updateAttendanceSettings(data.attendance_status);
+                })
+                .catch(error => console.error('Error checking status:', error));
+        }
+
+        // Update registration panel
+        function updateRegistrationPanel(newUserDetected) {
+            const registrationPanel = document.getElementById('registration-panel');
+            const noRegistration = document.getElementById('no-registration');
+            
+            if (newUserDetected) {
+                registrationPanel.style.display = 'block';
+                noRegistration.style.display = 'none';
+            } else {
+                registrationPanel.style.display = 'none';
+                noRegistration.style.display = 'block';
+            }
+        }
+
+        // Update attendance settings display
+        function updateAttendanceSettings(attendanceStatus) {
+            document.getElementById('current-status').textContent = attendanceStatus.status;
+            document.getElementById('current-status').className = `status-badge status-${attendanceStatus.status.toLowerCase()}`;
+            
+            if (attendanceStatus.start_time && attendanceStatus.end_time) {
+                document.getElementById('current-window').textContent = 
+                    `${attendanceStatus.start_time} to ${attendanceStatus.end_time}`;
+            }
+            
+            if (attendanceStatus.current_time) {
+                document.getElementById('current-time').textContent = attendanceStatus.current_time;
+            }
+        }
+
+        // Handle registration form submission
+        document.getElementById('registration-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/api/registration/approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Student registered successfully!');
+                    this.reset();
+                } else {
+                    alert('Registration failed: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Registration failed');
+            });
+        });
+
+        // Handle registration rejection
+        document.getElementById('reject-btn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to reject this registration?')) {
+                fetch('/api/registration/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('Registration rejected');
+                        document.getElementById('registration-form').reset();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        });
+
+        // Handle attendance settings form
+        document.getElementById('attendance-settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/api/attendance/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Attendance settings updated successfully!');
+                    checkStatus(); // Refresh status
+                } else {
+                    alert('Failed to update settings: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update settings');
+            });
+        });
+
+        // Load attendance records
+        function loadAttendanceRecords(dateFilter = null) {
+            let url = '/api/attendance/records';
+            if (dateFilter) {
+                url += `?date=${dateFilter}`;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(records => {
+                    const tbody = document.getElementById('attendance-tbody');
+                    
+                    if (records.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No records found</td></tr>';
+                        return;
+                    }
+                    
+                    tbody.innerHTML = records.map(record => `
+                        <tr>
+                            <td>${record.date}</td>
+                            <td>${record.time}</td>
+                            <td>${record.student_id}</td>
+                            <td>${record.name}</td>
+                            <td>${record.class}</td>
+                            <td>${record.department}</td>
+                            <td>${record.roll_no}</td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading records:', error);
+                    document.getElementById('attendance-tbody').innerHTML = 
+                        '<tr><td colspan="7" class="no-data">Error loading records</td></tr>';
+                });
+        }
+
+        // Event listeners for records
+        document.getElementById('load-records').addEventListener('click', function() {
+            const dateFilter = document.getElementById('date-filter').value;
+            loadAttendanceRecords(dateFilter);
+        });
+
+        document.getElementById('clear-filter').addEventListener('click', function() {
+            document.getElementById('date-filter').value = '';
+            loadAttendanceRecords();
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkStatus();
+            loadAttendanceRecords();
+            
+            // Start status checking interval
+            statusCheckInterval = setInterval(checkStatus, 2000);
+            
+            // Load current attendance settings
+            fetch('/api/attendance/settings')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.start_time) {
+                        document.getElementById('start-time').value = data.start_time;
+                    }
+                    if (data.end_time) {
+                        document.getElementById('end-time').value = data.end_time;
+                    }
+                });
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+        });
+    </script>
+</body>
+</html>

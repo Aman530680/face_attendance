@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Attendance System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Face Recognition Attendance System</h1>
+            <div class="nav">
+                <a href="/" class="active">Student View</a>
+                <a href="/admin">Admin Panel</a>
+            </div>
+        </header>
+
+        <main>
+            <div class="video-section">
+                <div class="video-container">
+                    <img id="video-feed" src="{{ url_for('video_feed') }}" alt="Camera Feed">
+                </div>
+                
+                <div class="status-panel">
+                    <div class="attendance-status">
+                        <h3>Attendance Status</h3>
+                        <div id="attendance-status" class="status-closed">
+                            <span class="status-text">Loading...</span>
+                            <span class="time-window">--:-- to --:--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div class="student-info" id="student-info" style="display: none;">
+                    <h3>Student Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Name:</label>
+                            <span id="student-name">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Student ID:</label>
+                            <span id="student-id">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Class:</label>
+                            <span id="student-class">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Department:</label>
+                            <span id="student-department">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Roll No:</label>
+                            <span id="student-roll">--</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Attendance Today:</label>
+                            <span id="attendance-today" class="status-badge">--</span>
+                        </div>
+                    </div>
+                    <div class="attendance-message" id="attendance-message"></div>
+                </div>
+
+                <div class="system-message" id="system-message">
+                    <p>Please stand in front of the camera for face recognition</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
